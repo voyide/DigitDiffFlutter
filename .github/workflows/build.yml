@@ -1,0 +1,56 @@
+name: Build Universal Native App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build_apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install System Dependencies for code-gen
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang
+
+      - name: Install Flutter Rust Bridge CLI
+        run: cargo install flutter_rust_bridge_codegen@^2.0.0
+
+      - name: Run Dart Dependencies
+        run: flutter pub get
+
+      - name: Generate Rust/Dart Bindings natively
+        run: flutter_rust_bridge_codegen generate
+
+      - name: Build APK (Release mode, Native Optimization)
+        run: flutter build apk --release
+
+      - name: Upload Native APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Universal-Sequencer-Native-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
