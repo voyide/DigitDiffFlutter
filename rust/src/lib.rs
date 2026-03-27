@@ -1,3 +1,3 @@
-mod api;
-mod solver;
-flutter_rust_bridge::frb_generated_default!();
+pub mod api;
+pub mod solver;
+mod frb_generated; // Auto-injected by Flutter Rust Bridge
