@@ -1,4 +1,4 @@
 rust_root: "rust"
-rust_input: "rust/src/api.rs"
+rust_input: "crate::api"
 dart_output: "lib/rust"
 rust_output: "rust/src/frb_generated.rs"
