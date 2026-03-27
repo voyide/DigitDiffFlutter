@@ -39,22 +39,25 @@ jobs:
 
       - name: Generate Android Platform Files
         run: |
-          # Back up our custom files so Flutter doesn't overwrite them
+          # Back up custom files
           cp pubspec.yaml pubspec.yaml.bak
-          mv lib/main.dart lib/main.dart.bak
+          cp lib/main.dart lib/main.dart.bak
           
-          # Generate the missing 'android/' folder required for the APK
+          # Generate Android framework
           flutter create --platforms=android .
           
-          # Restore our custom math files
-          mv lib/main.dart.bak lib/main.dart
-          mv pubspec.yaml.bak pubspec.yaml
+          # Force restore custom files
+          mv -f lib/main.dart.bak lib/main.dart
+          mv -f pubspec.yaml.bak pubspec.yaml
 
       - name: Run Dart Dependencies
         run: flutter pub get
 
       - name: Integrate Rust Engine into Android
-        run: flutter_rust_bridge_codegen integrate
+        run: |
+          flutter_rust_bridge_codegen integrate
+          # REMOVE the dummy template FRB auto-generates so it doesn't crash the build
+          rm -rf rust/src/api/
 
       - name: Generate Rust/Dart Bindings natively
         run: flutter_rust_bridge_codegen generate
