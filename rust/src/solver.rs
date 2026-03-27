@@ -26,11 +26,9 @@ pub struct Config {
     pub start_n: String,
 }
 
-// 1. Array Extraction
 fn get_d_array(n: &BigUint, b: u32, k_offset: i32) -> (Vec<u32>, usize) {
     let big_b = BigUint::from(b);
     let mut k = 0;
-    
     if !n.is_zero() {
         let mut t = n.clone();
         while t > BigUint::zero() {
@@ -58,11 +56,9 @@ fn get_d_array(n: &BigUint, b: u32, k_offset: i32) -> (Vec<u32>, usize) {
     for w in (k + 1)..(l_end + 3) {
         d[w] = d[(w - 1) % k + 1];
     }
-    
     (d, l_end)
 }
 
-// 2. RHS Constraints logic (including Rhai JIT for custom text)
 fn evaluate_rhs(engine: &Engine, ast: &Option<AST>, val: f64, di: u32, d_next: u32, b: u32, rhs_type: u32) -> bool {
     let di_f = di as f64;
     match rhs_type {
@@ -78,7 +74,7 @@ fn evaluate_rhs(engine: &Engine, ast: &Option<AST>, val: f64, di: u32, d_next: u
         9 => val == ((di as f64 + 1.0) % b as f64),
         10 => val == ((di as f64 + d_next as f64) % b as f64),
         11 => val == ((di as f64 * d_next as f64) % b as f64),
-        12 => { // Custom JIT JS/Rhai String
+        12 => { 
             if let Some(compiled_ast) = ast {
                 let mut scope = Scope::new();
                 scope.push("val", val);
@@ -94,28 +90,21 @@ fn evaluate_rhs(engine: &Engine, ast: &Option<AST>, val: f64, di: u32, d_next: u
     }
 }
 
-// 3. Core Engine (Handling all DP matrices exactly like JS)
 pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<AST>, rhs1_ast: &Option<AST>, rhs2_ast: &Option<AST>) -> BigUint {
     let (d, loop_end) = get_d_array(n, cfg.b, cfg.k_offset);
     let b = cfg.b;
     let mut total_ways = BigUint::zero();
 
-    // Condition Checker Closure
     let check_conds = |val: f64, di: u32, d_next: u32| -> bool {
         let cond1 = evaluate_rhs(engine, rhs1_ast, val, di, d_next, b, cfg.rhs1);
         if cfg.logic == "NONE" {
             return cond1;
         }
         let cond2 = evaluate_rhs(engine, rhs2_ast, val, di, d_next, b, cfg.rhs2);
-        if cfg.logic == "AND" {
-            cond1 && cond2
-        } else {
-            cond1 || cond2
-        }
+        if cfg.logic == "AND" { cond1 && cond2 } else { cond1 || cond2 }
     };
 
     if cfg.lhs == 14 { 
-        // GLOBAL SIGMA LOGIC
         let max_sum = (loop_end + 1) * (b as usize - 1);
         let mut dp = vec![BigUint::zero(); max_sum + 1];
         let mut next_dp = vec![BigUint::zero(); max_sum + 1];
@@ -154,7 +143,6 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
             }
         }
     } else if cfg.lhs >= 15 && cfg.lhs <= 18 {
-        // COMPLEX Z LOGIC
         let num_states = (b * b) as usize;
         let mut v = vec![BigUint::from(1u32); num_states];
         let mut next_v = vec![BigUint::zero(); num_states];
@@ -173,7 +161,7 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
                         16 => dist.floor(),
                         17 => dist.ceil(),
                         18 => dist.round(),
-                        _ => dist, // 15 Exact
+                        _ => dist,
                     };
                     if check_conds(val, di, d_next) { next_v[next_state] += &v[state]; }
                 }
@@ -182,7 +170,6 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
         }
         for ways in v { total_ways += ways; }
     } else if cfg.lhs == 10 || cfg.lhs == 11 {
-        // 2D DP LOGIC
         let mut v = vec![BigUint::from(1u32); (b * b) as usize];
         let mut next_v = vec![BigUint::zero(); (b * b) as usize];
         
@@ -208,7 +195,6 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
         }
         for ways in v { total_ways += ways; }
     } else {
-        // STANDARD 1D DP LOGIC
         let mut v = vec![BigUint::from(1u32); b as usize];
         let mut next_v = vec![BigUint::zero(); b as usize];
         
@@ -252,7 +238,6 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
     total_ways
 }
 
-// 4. Color Generation & Conversions
 pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] {
     let mut r = l;
     let mut g = l;
@@ -282,7 +267,7 @@ pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] {
 }
 
 pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> {
-    let mut p = vec![[30, 30, 45]]; // Default dark background
+    let mut p = vec![[30, 30, 45]];
     if mod_m > 1 {
         for i in 1..mod_m {
             let h = (i as f32) / (mod_m as f32);
