@@ -1,15 +1,28 @@
 use num_bigint::BigUint;
-use num_traits::{Zero, ToPrimitive};
-use rhai::{Engine, AST, Scope};
-use std::num::NonZeroUsize;
+use num_traits::{ToPrimitive, Zero};
+use rhai::{Engine, Scope, AST};
 
 #[derive(Clone)]
 pub struct Config {
-    pub b: u32, pub p: String, pub m: u32, pub k_offset: i32,
-    pub lhs: u32, pub rhs1: u32, pub rhs2: u32, pub logic: String,
-    pub custom_lhs: String, pub custom_rhs1: String, pub custom_rhs2: String,
-    pub post_type: String, pub post_k: u32, pub grid_r: usize, pub grid_c: usize,
-    pub target_t: u32, pub mod_mc: u32, pub render_r: usize, pub render_c: usize,
+    pub b: u32,
+    pub p: String,
+    pub m: u32,
+    pub k_offset: i32,
+    pub lhs: u32,
+    pub rhs1: u32,
+    pub rhs2: u32,
+    pub logic: String,
+    pub custom_lhs: String,
+    pub custom_rhs1: String,
+    pub custom_rhs2: String,
+    pub post_type: String,
+    pub post_k: u32,
+    pub grid_r: usize,
+    pub grid_c: usize,
+    pub target_t: u32,
+    pub mod_mc: u32,
+    pub render_r: usize,
+    pub render_c: usize,
     pub start_n: String,
 }
 
@@ -17,10 +30,16 @@ pub struct Config {
 fn get_d_array(n: &BigUint, b: u32, k_offset: i32) -> (Vec<u32>, usize) {
     let big_b = BigUint::from(b);
     let mut k = 0;
+    
     if !n.is_zero() {
         let mut t = n.clone();
-        while t > BigUint::zero() { k += 1; t /= &big_b; }
-    } else { k = 1; }
+        while t > BigUint::zero() {
+            k += 1;
+            t /= &big_b;
+        }
+    } else {
+        k = 1;
+    }
     
     let l_end = std::cmp::max(1, k as i32 + k_offset - 1) as usize;
     let mut d = vec![0u32; l_end + 3];
@@ -34,8 +53,12 @@ fn get_d_array(n: &BigUint, b: u32, k_offset: i32) -> (Vec<u32>, usize) {
             idx -= 1;
         }
     }
+    
     d[0] = d[k];
-    for w in (k + 1)..(l_end + 3) { d[w] = d[(w - 1) % k + 1]; }
+    for w in (k + 1)..(l_end + 3) {
+        d[w] = d[(w - 1) % k + 1];
+    }
+    
     (d, l_end)
 }
 
@@ -58,27 +81,37 @@ fn evaluate_rhs(engine: &Engine, ast: &Option<AST>, val: f64, di: u32, d_next: u
         12 => { // Custom JIT JS/Rhai String
             if let Some(compiled_ast) = ast {
                 let mut scope = Scope::new();
-                scope.push("val", val); scope.push("di", di_f); scope.push("b", b as f64);
+                scope.push("val", val);
+                scope.push("di", di_f);
+                scope.push("b", b as f64);
                 scope.push("d_next", d_next as f64);
                 engine.eval_ast_with_scope::<bool>(&mut scope, compiled_ast).unwrap_or(false)
-            } else { false }
+            } else {
+                false
+            }
         },
         _ => false,
     }
 }
 
-// 3. Core Engine (Handling all DP matrices exactly like your JS `generateSolverCodeString`)
+// 3. Core Engine (Handling all DP matrices exactly like JS)
 pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<AST>, rhs1_ast: &Option<AST>, rhs2_ast: &Option<AST>) -> BigUint {
     let (d, loop_end) = get_d_array(n, cfg.b, cfg.k_offset);
     let b = cfg.b;
     let mut total_ways = BigUint::zero();
 
-    // Check conditions block
+    // Condition Checker Closure
     let check_conds = |val: f64, di: u32, d_next: u32| -> bool {
         let cond1 = evaluate_rhs(engine, rhs1_ast, val, di, d_next, b, cfg.rhs1);
-        if cfg.logic == "NONE" { return cond1; }
+        if cfg.logic == "NONE" {
+            return cond1;
+        }
         let cond2 = evaluate_rhs(engine, rhs2_ast, val, di, d_next, b, cfg.rhs2);
-        if cfg.logic == "AND" { cond1 && cond2 } else { cond1 || cond2 }
+        if cfg.logic == "AND" {
+            cond1 && cond2
+        } else {
+            cond1 || cond2
+        }
     };
 
     if cfg.lhs == 14 { 
@@ -149,7 +182,7 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
         }
         for ways in v { total_ways += ways; }
     } else if cfg.lhs == 10 || cfg.lhs == 11 {
-        // 2D DP LOGIC (needsPrev / needsNNext)
+        // 2D DP LOGIC
         let mut v = vec![BigUint::from(1u32); (b * b) as usize];
         let mut next_v = vec![BigUint::zero(); (b * b) as usize];
         
@@ -198,9 +231,13 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
                         13 => {
                             if let Some(ref ast) = lhs_ast {
                                 let mut scope = Scope::new();
-                                scope.push("xi", xi as f64); scope.push("x_next", x_next as f64); scope.push("b", b as f64);
+                                scope.push("xi", xi as f64);
+                                scope.push("x_next", x_next as f64);
+                                scope.push("b", b as f64);
                                 engine.eval_ast_with_scope::<f64>(&mut scope, ast).unwrap_or(0.0)
-                            } else { 0.0 }
+                            } else { 
+                                0.0 
+                            }
                         },
                         _ => (xi as f64 - x_next as f64).abs(),
                     };
@@ -215,7 +252,8 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
     total_ways
 }
 
-pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] { /* Same as previous logic */ pub fn hsl_to_rgb(h: f32, s: f32, l: f32) ->[u8; 3] {
+// 4. Color Generation & Conversions
+pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] {
     let mut r = l;
     let mut g = l;
     let mut b = l;
@@ -236,7 +274,11 @@ pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] { /* Same as previous logic
         r = hue2rgb(p, q, h + 1.0 / 3.0);
         g = hue2rgb(p, q, h);
         b = hue2rgb(p, q, h - 1.0 / 3.0);
-    }[(r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8]
+    }[
+        (r * 255.0).round() as u8,
+        (g * 255.0).round() as u8,
+        (b * 255.0).round() as u8
+    ]
 }
 
 pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> {
@@ -248,40 +290,5 @@ pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> {
         }
     }
     p.push([0, 0, 0]); 
-    return p;
-} }
-pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> { /* Same as previous logic */ pub fn hsl_to_rgb(h: f32, s: f32, l: f32) ->[u8; 3] {
-    let mut r = l;
-    let mut g = l;
-    let mut b = l;
-
-    if s != 0.0 {
-        let hue2rgb = |p: f32, q: f32, mut t: f32| -> f32 {
-            if t < 0.0 { t += 1.0; }
-            if t > 1.0 { t -= 1.0; }
-            if t < 1.0 / 6.0 { return p + (q - p) * 6.0 * t; }
-            if t < 1.0 / 2.0 { return q; }
-            if t < 2.0 / 3.0 { return p + (q - p) * (2.0 / 3.0 - t) * 6.0; }
-            p
-        };
-
-        let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
-        let p = 2.0 * l - q;
-
-        r = hue2rgb(p, q, h + 1.0 / 3.0);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1.0 / 3.0);
-    }[(r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8]
+    p
 }
-
-pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> {
-    let mut p = vec![[30, 30, 45]]; // Default dark background
-    if mod_m > 1 {
-        for i in 1..mod_m {
-            let h = (i as f32) / (mod_m as f32);
-            p.push(hsl_to_rgb(h, 0.9, 0.55));
-        }
-    }
-    p.push([0, 0, 0]); 
-    return p;
-} }
