@@ -1,0 +1,16 @@
+[package]
+name = "rust_lib_universal_sequencer"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+flutter_rust_bridge = "2.0.0"
+num-bigint = "0.4.4"
+num-traits = "0.2.18"
+rayon = "1.10.0"
+gif = "0.13.1"
+rhai = { version = "1.18.0", features = ["sync"] }
+lru = "0.12.0"
