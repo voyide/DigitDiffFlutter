@@ -25,9 +25,6 @@ jobs:
         with:
           targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
 
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -40,13 +37,29 @@ jobs:
       - name: Install Flutter Rust Bridge CLI
         run: cargo install flutter_rust_bridge_codegen@^2.0.0
 
+      - name: Generate Android Platform Files
+        run: |
+          # Back up our custom files so Flutter doesn't overwrite them
+          cp pubspec.yaml pubspec.yaml.bak
+          mv lib/main.dart lib/main.dart.bak
+          
+          # Generate the missing 'android/' folder required for the APK
+          flutter create --platforms=android .
+          
+          # Restore our custom math files
+          mv lib/main.dart.bak lib/main.dart
+          mv pubspec.yaml.bak pubspec.yaml
+
       - name: Run Dart Dependencies
         run: flutter pub get
+
+      - name: Integrate Rust Engine into Android
+        run: flutter_rust_bridge_codegen integrate
 
       - name: Generate Rust/Dart Bindings natively
         run: flutter_rust_bridge_codegen generate
 
-      - name: Build APK (Release mode, Native Optimization)
+      - name: Build APK (Release mode)
         run: flutter build apk --release
 
       - name: Upload Native APK Artifact
