@@ -215,5 +215,73 @@ pub fn base_solver(n: &BigUint, cfg: &Config, engine: &Engine, lhs_ast: &Option<
     total_ways
 }
 
-pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] { /* Same as previous logic */ ... }
-pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> { /* Same as previous logic */ ... }
+pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] { /* Same as previous logic */ pub fn hsl_to_rgb(h: f32, s: f32, l: f32) ->[u8; 3] {
+    let mut r = l;
+    let mut g = l;
+    let mut b = l;
+
+    if s != 0.0 {
+        let hue2rgb = |p: f32, q: f32, mut t: f32| -> f32 {
+            if t < 0.0 { t += 1.0; }
+            if t > 1.0 { t -= 1.0; }
+            if t < 1.0 / 6.0 { return p + (q - p) * 6.0 * t; }
+            if t < 1.0 / 2.0 { return q; }
+            if t < 2.0 / 3.0 { return p + (q - p) * (2.0 / 3.0 - t) * 6.0; }
+            p
+        };
+
+        let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+        let p = 2.0 * l - q;
+
+        r = hue2rgb(p, q, h + 1.0 / 3.0);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1.0 / 3.0);
+    }[(r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8]
+}
+
+pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> {
+    let mut p = vec![[30, 30, 45]]; // Default dark background
+    if mod_m > 1 {
+        for i in 1..mod_m {
+            let h = (i as f32) / (mod_m as f32);
+            p.push(hsl_to_rgb(h, 0.9, 0.55));
+        }
+    }
+    p.push([0, 0, 0]); 
+    return p;
+} }
+pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> { /* Same as previous logic */ pub fn hsl_to_rgb(h: f32, s: f32, l: f32) ->[u8; 3] {
+    let mut r = l;
+    let mut g = l;
+    let mut b = l;
+
+    if s != 0.0 {
+        let hue2rgb = |p: f32, q: f32, mut t: f32| -> f32 {
+            if t < 0.0 { t += 1.0; }
+            if t > 1.0 { t -= 1.0; }
+            if t < 1.0 / 6.0 { return p + (q - p) * 6.0 * t; }
+            if t < 1.0 / 2.0 { return q; }
+            if t < 2.0 / 3.0 { return p + (q - p) * (2.0 / 3.0 - t) * 6.0; }
+            p
+        };
+
+        let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+        let p = 2.0 * l - q;
+
+        r = hue2rgb(p, q, h + 1.0 / 3.0);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1.0 / 3.0);
+    }[(r * 255.0).round() as u8, (g * 255.0).round() as u8, (b * 255.0).round() as u8]
+}
+
+pub fn generate_palette(mod_m: u32) -> Vec<[u8; 3]> {
+    let mut p = vec![[30, 30, 45]]; // Default dark background
+    if mod_m > 1 {
+        for i in 1..mod_m {
+            let h = (i as f32) / (mod_m as f32);
+            p.push(hsl_to_rgb(h, 0.9, 0.55));
+        }
+    }
+    p.push([0, 0, 0]); 
+    return p;
+} }
